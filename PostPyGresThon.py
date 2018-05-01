@@ -2,8 +2,13 @@ import psycopg2
 import tkinter
 from tkinter import ttk
 
-conn = psycopg2.connect(dbname="databasename", user="postgres", port="5432")
-cur = conn.cursor()
+try:
+    conn = psycopg2.connect(dbname="dev-db", user="postgres", port="5434")
+    cur = conn.cursor()
+except:
+    conn = None
+    cur = None
+    print("Connection failed, that database doesn't exist?")
 
 class Scrollbox(tkinter.Listbox):
 
@@ -20,16 +25,26 @@ class Scrollbox(tkinter.Listbox):
 
 
 def connect_to_db():
+    disconnect_from_db()
+    
     try:
         conn = psycopg2.connect(dbname=db_name.get(), user=db_user.get(), port=db_port.get(), host=db_host.get(), password=db_pass.get())
         cur = conn.cursor()
-        get_tables()
         message_label.configure(text='Successfully connected')
+        get_tables(cur)
     except:
         message_label.configure(text='Failed to connect to db')
 
 
-def get_tables():
+def disconnect_from_db():
+    if conn:
+        cur.close()
+        conn.close()
+        message_label.configure(text='Successfully disconnected')
+        print('Disconnected from db')
+
+
+def get_tables(cur):
     try:
         cur.execute('SELECT * FROM pg_catalog.pg_tables WHERE schemaname = \'public\' ORDER BY tablename ASC;')
         tables = cur.fetchall()
@@ -70,6 +85,8 @@ def query_the_db():
 
 
 def run_a_query(query):
+    conn = psycopg2.connect(dbname=db_name.get(), user=db_user.get(), port=db_port.get(), host=db_host.get(), password=db_pass.get())
+    cur = conn.cursor()
     cur.execute(query)
     colnames = [desc[0] for desc in cur.description]
     rowLV.delete(*rowLV.get_children())
@@ -154,7 +171,7 @@ message_label = tkinter.Label(mainWindow, text="message")
 message_label.grid(row=2, column=1, columnspan=5, sticky='s')
 
 # ===== Main loop =====
-get_tables()
+get_tables(cur)
 
 mainWindow.mainloop()
 print("closing database connection")
